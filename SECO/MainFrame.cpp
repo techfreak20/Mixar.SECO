@@ -80,8 +80,12 @@ MainFrame::MainFrame(const wxString& title) : wxFrame(nullptr, wxID_ANY, title) 
     basicLabel->SetForegroundColour(*wxWHITE); 
     leftSizer->Add(basicLabel, 0, wxALL, 10);
 
-
-    leftSizer->Add(new wxButton(leftPanel, wxID_OPEN, "Open Image"), 0, wxALL | wxEXPAND, 5);
+    
+    //open Image
+    wxButton* openButton = new wxButton(leftPanel, wxID_ANY, "Open Image");
+    leftSizer->Add(openButton, 0, wxALL | wxEXPAND, 5);
+    openButton->Bind(wxEVT_BUTTON, &MainFrame::OpenImage, this);
+    
     leftSizer->Add(new wxButton(leftPanel, wxID_ANY, "Noise Generator"), 0, wxALL | wxEXPAND, 5);
     leftPanel->SetSizer(leftSizer);
 
@@ -111,7 +115,12 @@ MainFrame::MainFrame(const wxString& title) : wxFrame(nullptr, wxID_ANY, title) 
     leftSizer->Add(new wxButton(leftPanel, wxID_ANY, "Threshold"), 0, wxALL | wxEXPAND, 5);
     leftSizer->Add(new wxButton(leftPanel, wxID_ANY, "Edge Detection"), 0, wxALL | wxEXPAND, 5);
     leftSizer->Add(new wxButton(leftPanel, wxID_ANY, "Convolution Filter"), 0, wxALL | wxEXPAND, 5);
-    leftSizer->Add(new wxButton(leftPanel, wxID_ANY, "Color Channel Splitter"), 0, wxALL | wxEXPAND, 5);
+
+    //Color channel Splitter
+    wxButton* splitterButton = new wxButton(leftPanel, wxID_ANY, "Color Channel Splitter");
+    leftSizer->Add(splitterButton, 0, wxALL | wxEXPAND, 5);
+    splitterButton->Bind(wxEVT_BUTTON, &MainFrame::OnColorChannelSplitClicked, this);
+    
     leftSizer->Add(new wxButton(leftPanel, wxID_ANY, "Blend"), 0, wxALL | wxEXPAND, 5);
 
     leftPanel->SetSizer(leftSizer);
@@ -236,6 +245,30 @@ void MainFrame::OnAbout(wxCommandEvent& event) {
         "About", wxOK | wxICON_INFORMATION);
 }
 
+void MainFrame::OpenImage(wxCommandEvent& event) {
+    wxString path = wxFileSelector("Select an image file", "", "", "",
+        "Image files (*.png;*.jpg;*.bmp)|*.png;*.jpg;*.bmp|All files (*.*)|*.*",
+        wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+
+    if (path.IsEmpty()) return;  // User cancelled
+
+    wxImage image;
+    if (!image.LoadFile(path)) {
+        wxLogError("Cannot load image from: %s", path);
+        return;
+    }
+
+    originalImage = image.Copy();
+    currentImage = image.Copy();
+
+    image.Rescale(400, 300, wxIMAGE_QUALITY_HIGH);
+    wxBitmap bitmap(image);
+    imageBox->SetBitmap(bitmap);
+    Layout();
+}
+
+
+
 void MainFrame::OnBlurImage(wxCommandEvent& event) {
     if (!originalImage.IsOk()) {
         wxLogError("No image loaded.");
@@ -338,4 +371,61 @@ void MainFrame::OnBrightnessSliderChanged(wxCommandEvent& event) {
 }
 
 
+
+
+//COLOR CHANNEL SPLIT
+void MainFrame::OnColorChannelSplitClicked(wxCommandEvent& event) {
+    if (!originalImage.IsOk()) {
+        wxLogError("No image loaded.");
+        return;
+    }
+
+    int width = originalImage.GetWidth();
+    int height = originalImage.GetHeight();
+
+    wxImage redImage(width, height);
+    wxImage greenImage(width, height);
+    wxImage blueImage(width, height);
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            int r = originalImage.GetRed(x, y);
+            int g = originalImage.GetGreen(x, y);
+            int b = originalImage.GetBlue(x, y);
+
+            // Red channel (R value in all RGB slots)
+            redImage.SetRGB(x, y, r, r, r);
+            // Green channel
+            greenImage.SetRGB(x, y, g, g, g);
+            // Blue channel
+            blueImage.SetRGB(x, y, b, b, b);
+        }
+    }
+
+    // Scale to fit preview space
+    redImage.Rescale(150, 100);
+    greenImage.Rescale(150, 100);
+    blueImage.Rescale(150, 100);
+
+    wxBitmap redBitmap(redImage);
+    wxBitmap greenBitmap(greenImage);
+    wxBitmap blueBitmap(blueImage);
+
+    // Show in properties panel
+    propertiesSizer->Clear(true);
+
+    wxStaticText* label = new wxStaticText(propertiesPanel, wxID_ANY, "Color Channels");
+    label->SetForegroundColour(*wxWHITE);
+    propertiesSizer->Add(label, 0, wxALL, 10);
+
+    redChannelBox = new wxStaticBitmap(propertiesPanel, wxID_ANY, redBitmap);
+    greenChannelBox = new wxStaticBitmap(propertiesPanel, wxID_ANY, greenBitmap);
+    blueChannelBox = new wxStaticBitmap(propertiesPanel, wxID_ANY, blueBitmap);
+
+    propertiesSizer->Add(redChannelBox, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 5);
+    propertiesSizer->Add(greenChannelBox, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 5);
+    propertiesSizer->Add(blueChannelBox, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 5);
+
+    propertiesPanel->Layout();
+}
 
