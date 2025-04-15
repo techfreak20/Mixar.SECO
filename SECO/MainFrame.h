@@ -12,10 +12,12 @@ private:
     void OnSaveImage(wxCommandEvent& event);
     void OnExit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
+    void OpenImage(wxCommandEvent& event);
     void OnBlurImage(wxCommandEvent& event);
     void OnBlurSliderChanged(wxCommandEvent& event);
     void OnBrightnessImage(wxCommandEvent& event);
     void OnBrightnessSliderChanged(wxCommandEvent& event);
+     void OnColorChannelSplitClicked(wxCommandEvent& event);
 
 
 
@@ -26,6 +28,9 @@ private:
     wxSlider* blurSlider ;
     wxSlider* brightnessSlider;
     wxImage originalImage;
+    wxStaticBitmap* redChannelBox;
+    wxStaticBitmap* greenChannelBox;
+    wxStaticBitmap* blueChannelBox;
 
     // Declare the event table
     wxDECLARE_EVENT_TABLE();
